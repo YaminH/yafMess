@@ -1,0 +1,64 @@
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>留言板登陆</title>
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link href="bootstrap/css/bootstrap.min.css" rel="stylesheet">
+    <script src="bootstrap/js/bootstrap.min.js"></script>
+    <script src="js/jquery-3.2.1.min.js"></script>
+    <script src="js/md5.js"></script>
+</head>
+<body>
+<body style="padding: 100px 100px 10px;" background="img/bg0.jpg" style=" background-repeat:no-repeat ;background-size:100% 100%; background-attachment: fixed;">
+<form id="loginForm" role="form" class="container col-xs-6 col-md-offset-3">
+    <div class="row ">
+        <div class="col-lg-5">
+            <label >用户名</label>
+            <input type="text" class="form-control" id="user_name" name="user_name"
+                   placeholder="请输入用户名">
+        </div>
+    </div>
+    <div class="row ">
+        <div class="col-lg-5">
+            <label >密码</label>
+            <input type="password" class="form-control" id="pass_word" name="pass_word"
+                   placeholder="请输入密码">
+        </div>
+    </div>
+    <button type="button" class="btn btn-default" onclick="jsLogin()">提交</button>
+    <button type="button" class="btn btn-default" onclick="jsRegister()">注册</button>
+</form>
+<script type="text/javascript">
+    function jsLogin() {
+        var name = document.getElementById("user_name").value;
+        var pass = document.getElementById("pass_word").value;
+        if(name == ""){
+            alert("用户名不能为空");
+        }else{
+            if(pass == ""){
+                alert("密码不能为空");
+            }else{
+                var send_data={'user_name':name,'pass_word':hex_md5(pass)};
+                $.ajax({
+                    type:"POST",
+                    url:"Index/login",
+                    data:send_data,
+                    dataType:"json",
+                    success:function(data){
+                        if(data.success){
+                            location.href="../public/Messlist/index";
+                        }else{
+                            alert(data.message);
+                        }
+                    }
+                });
+            }
+        }
+    }
+    function jsRegister(){
+        location.href="../public/Register/index";
+    }
+</script>
+</body>
+</html>

@@ -1,0 +1,255 @@
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link href="../bootstrap/css/bootstrap.min.css" rel="stylesheet">
+    <script src="../bootstrap/js/bootstrap.min.js"></script>
+    <script src="../js/jquery-3.2.1.min.js"></script>
+    <title>留言板</title>
+</head>
+<body style="padding: 100px 100px 10px;" background="../img/bg0.jpg" style=" background-repeat:no-repeat ;background-size:100% 100%; background-attachment: fixed;">
+<div>
+    <div>
+        <form id="newMessForm" role="form">
+            <div style="text-align: left; font-size:24px" >
+                <?php echo $user_name; ?>：欢迎来到留言板
+            </div>
+            <textarea class="form-control" type="text" id="new_mess" name="new_mess"cols='80' rows='5'></textarea>
+        </form>
+        <button type="button"  class="btn btn-default" onclick="publish()">发表</button>
+    </div>
+    <div id="mlist">
+        <?php
+        foreach ($list as $item){
+            $un=strip_tags($item['user_name']);
+            $mc=strip_tags($item['mess_content']);
+            echo "<div>
+                           <div>用户名:{$un}<br/>
+                           <img src='../img/{$item['picture']}' width='100' height='100' /><br/>
+                           </div>
+                            <div >
+                                <div>发表时间:{$item['creat_time']}
+                                    <button class=\"btn btn-xs\" onclick=\"inform({$item['mess_id']})\">举报</button><br/>
+                                 </div>                    
+                                <div>
+                                <textarea class=\"form-control\" id=\"{$item['mess_id']}\" disabled='disabled' cols='80' rows='5'>{$mc}</textarea>";
+            if($user_id==$item['user_id']){
+                echo  "<div class=\"btn-group\" id='button_group'>  
+                                                <a onclick=\"editMess({$item['mess_id']})\">  <span class=\"glyphicon glyphicon-pencil\"></span>  </a>
+                                                <a onclick=\"deleteMess({$item['mess_id']})\" >  <span class=\"glyphicon glyphicon-trash\"></span> </a>
+                                            </div>";
+            }
+                                       echo "</div>";
+            if(isset($item['children'])){  loop($user_id,$item['mess_id'],$un,$item['children']);}
+            echo "<div style=\"padding: 0px 50px 0px;\">
+                    回复：<textarea class=\"form-control\" id=\"rv{$item['mess_id']}\"  name=\"res_content\" cols='50' rows='1'></textarea>
+                   <button class=\"btn btn-sm\" onclick=\"subRes({$item['mess_id']})\">提交</button>
+                   </div>
+                </div>
+                </div><br/>";
+        }
+        echo "<br/>当前为第<input id=\"curPage\" value=\"{$curPage}\"></input>页";
+        function loop($user_id,$parent_id,$un,$item){
+            foreach ($item as $r) {
+                $aun = $r['ap_user_name'];
+                $amc = $r['ap_mess_content'];
+                echo "<div style=\"padding: 0px 50px 0px;\"><div>{$aun}回复$un<a onclick=\"sedrev({$parent_id},{$r['ap_mess_id']})\"><span class=\"glyphicon glyphicon-share-alt\"></span></a>";
+                if ($user_id==$r['ap_user_id']){
+                    echo "<a onclick=\"deleteRevMess({$r['ap_mess_id']})\" > <span class=\"glyphicon glyphicon-trash\"></span> </a>";
+                }
+                echo "<div>时间:{$r['creat_time']}</div>";
+                echo "</div><textarea  class=\"form-control\"  readonly='readonly' cols='80' rows='1'>{$amc}</textarea>
+                            <div id='{$r['ap_mess_id']}'></div>
+                        </div>";
+                if(isset($r['children']))   loop($user_id,$parent_id,$r['ap_user_name'],$r['children']);
+            }
+        }
+        ?>
+    </div>
+    <br/>
+    <button class="btn btn-default" type="button" onclick="prePage()">上一页</button>
+    <button class="btn btn-default" type="button" onclick="nextPage()">下一页</button>
+</div>
+</body>
+<script>
+    function publish() {
+        var new_mess=document.getElementById("new_mess").value;
+        if(new_mess==""){
+            alert("请输入");
+        }else{
+            var send_data={'new_mess':new_mess};
+            $.ajax({
+                type:"POST",
+                url:"../Messlist/post",
+                data:send_data,
+                dataType:"json",
+                success:function(data){
+                    if(data.success){
+                        document.getElementById("mlist").innerHTML=data.htmltxt;
+                        document.getElementById("new_mess").value="";
+                    }else {
+                        alert(data.message);
+                    }
+                }
+            });
+        }
+    }
+    function deleteMess(mess_id) {
+        var send_data={'mess_id':mess_id};
+        $.ajax({
+            type:"POST",
+            url:"../Messlist/deleteMess",
+            data:send_data,
+            dataType:"json",
+            success:function(data){
+                if(data.success){
+                    document.getElementById("mlist").innerHTML=data.htmltxt;
+                    document.getElementById("new_mess").value="";
+                }else {
+                    alert(data.message);
+                }
+            }
+        });
+    }
+    function editMess(mess_id){
+        document.getElementById(mess_id).removeAttribute('disabled');
+        document.getElementById("button_group").innerHTML="<a onclick=\"saveMess("+mess_id+")\"> <span class=\"glyphicon glyphicon-credit-card\"></span></a>"+
+            "<a onclick=\"deleteMess(\"+mess_id+\")\"><span class=\"glyphicon glyphicon-trash\"></span></a>";
+    }
+    function saveMess(mess_id) {
+        if(document.getElementById(mess_id).disabled){
+            alert("未编辑");
+        }else{
+            var send_data={ 'mess_id':mess_id,'mess_content':document.getElementById(mess_id).value};
+            $.ajax({
+                type:"POST",
+                url:"../Messlist/saveMess",
+                data:send_data,
+                dataType:"json",
+                success:function(data){
+                    if(data.success){
+                        document.getElementById("button_group").innerHTML="<a onclick=\"editMess(\"+mess_id+\")\">  <span class=\"glyphicon glyphicon-pencil\"></span></a>"+
+                            "<a onclick=\"deleteMess(\"+mess_id+\")\" > <span class=\"glyphicon glyphicon-trash\"></span> </a>";
+                        document.getElementById(mess_id).disabled='disabled';
+                        document.getElementById(mess_id).value=data.htmltxt;
+                    }else{
+                        alert(data.message);
+                    }
+                }
+            });
+        }
+    }
+    function inform(mess_id){
+        var send_data={'mess_id':mess_id};
+        $.ajax({
+            type:"POST",
+            url:"../Messlist/inform",
+            data:send_data,
+            dataType:"json",
+            success:function(data){
+                if(data.success){
+                    document.getElementById("mlist").innerHTML=data.htmltxt;
+                }else{
+                    alert(data.message);
+                }
+            }
+        });
+    }
+    function subRes(mess_id) {
+        var id='rv'+mess_id;
+        var send_data={'mess_id':mess_id,'ap_mess_content':document.getElementById(id).value};
+        $.ajax({
+            type:"POST",
+            url:"../Messlist/subRes",
+            data:send_data,
+            dataType:"json",
+            success:function(data){
+                if(data.success){
+                    document.getElementById("mlist").innerHTML=data.htmltxt;
+                }else{
+                    alert(data.message);
+                }
+            }
+        });
+    }
+    function sedrev(parent_id,mess_id) {
+        if(document.getElementById('sedrevForm')){
+            alert('前先回复已经打开的编辑框');
+        }else {
+            document.getElementById(mess_id).innerHTML="<form id='sedrevForm' role='form'>" +
+                "<textarea class=\"form-control\" id='sedrev' name='sedrev' cols='80' rows='1'></textarea>" +
+                "<button type=\"button\" class=\"btn btn-default\" onclick=\"sedrevsave("+parent_id+','+mess_id+")\">提交</button>" +
+                    "<button type='button' class='btn btn-default' onclick='closerevedit("+mess_id+")'>取消</button>"+
+                "</form>";
+        }
+    }
+    function closerevedit(mess_id){
+        document.getElementById(mess_id).innerHTML="";
+    }
+    function sedrevsave(parent_id,mess_id){
+        var send_data={'mess_id':mess_id,'parent_id':parent_id,'ap_mess_content':document.getElementById('sedrev').value};
+        $.ajax({
+            type:"POST",
+            url:"../Messlist/sedrevsave",
+            data:send_data,
+            dataType:"json",
+            success:function(data){
+                if(data.success){
+                    document.getElementById("mlist").innerHTML=data.htmltxt;
+                }else{
+                    alert(data.message);
+                }
+            }
+        });
+    }
+    function deleteRevMess(mess_id) {
+        var send_data={'mess_id':mess_id};
+        $.ajax({
+            type:"POST",
+            url:"../Messlist/deleteRev",
+            data:send_data,
+            dataType:"json",
+            success:function(data){
+                if(data.success){
+                    document.getElementById("mlist").innerHTML=data.htmltxt;
+                }else{
+                    alert(data.message);
+                }
+            }
+        });
+    }
+    function prePage() {
+        var send_data={'curPage':(parseInt(document.getElementById("curPage").value)-1)};
+        $.ajax({
+            type:"POST",
+            url:"../Messlist/page",
+            data:send_data,
+            dataType:"json",
+            success:function(data){
+                if(data.success){
+                    document.getElementById('mlist').innerHTML = data.htmltxt;
+                }else{
+                    alert(data.message);
+                }
+            }
+        });
+    }
+    function nextPage() {
+        var send_data={'curPage':(parseInt(document.getElementById("curPage").value)+1)};
+        $.ajax({
+            type:"POST",
+            url:"../Messlist/page",
+            data:send_data,
+            dataType:"json",
+            success:function(data){
+                if(data.success){
+                    document.getElementById("mlist").innerHTML=data.htmltxt;
+                }else{
+                    alert(data.message);
+                }
+            }
+        });
+    }
+</script>
+</html>
